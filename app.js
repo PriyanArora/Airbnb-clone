@@ -5,12 +5,12 @@ const Listing = require("./models/listing.js");
 const path = require("path");
 const methodOverride = require("method-override");
 const ejsMate = require("ejs-mate");
-const { nextTick } = require("process");
 const MONGO_URL = "mongodb://127.0.0.1:27017/wanderlust";
 
 const wrapAsync = require("./utils/wrapAsync.js");
 const ExpressError = require("./utils/ExpressError.js");
 
+const { listingSchema } = require("./schema.js");
 
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
@@ -40,6 +40,16 @@ app.get("/",  (req,res)=>{
   res.send("Hi, I am root");
 });
 
+const validateListing = (req,res,next) =>{
+  let { error } = listingSchema.validate(req.body);
+  if (error) {
+    let errMsg = error.details.map((el) => el.message).join(",");
+    throw new ExpressError(400, errMsg);
+  }
+  else{
+    next();
+  }
+}
 //Index route
 app.get("/listings", async (req,res)=>{
   const allListings = await Listing.find({});
@@ -52,7 +62,7 @@ app.get("/listings/new", (req, res)=>{
 });
 
 //Create route -> new route sends post request through its new.ejs which we will use to create below
-app.post("/listings", wrapAsync(async(req, res)=>{
+app.post("/listings", validateListing, wrapAsync(async(req, res, next)=>{
     const newListing = new Listing(req.body.listing);
     await newListing.save();
     res.redirect("/listings");
@@ -67,11 +77,11 @@ app.get("/listings/:id/edit", async (req, res)=>{
 });
 
 //Update route
-app.put("/listings/:id", async(req,res)=>{
+app.put("/listings/:id", validateListing, wrapAsync(async(req,res)=>{
   let {id} = req.params;
   await Listing.findByIdAndUpdate(id, {...req.body.listing});
   res.redirect(`/listings`);
-});
+}));
 
 //Show route (keeping before new route as :id searches for new in database, js is weird man)
 app.get("/listings/:id", async (req,res)=>{
@@ -93,7 +103,7 @@ app.all("/*any", (req,res,next)=> {
 
 app.use((err,req,res,next)=>{
   let { statusCode = 500, message = "Something went wrong" } = err;
-  res.render("error.ejs");
+  res.status(statusCode).render("error.ejs", {message});
 });
 
 
