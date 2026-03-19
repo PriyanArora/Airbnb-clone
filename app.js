@@ -6,7 +6,6 @@ const methodOverride = require("method-override");
 const ejsMate = require("ejs-mate");
 
 const session = require("express-session");
-const flash = require("connect-flash");
 
 const MONGO_URL = "mongodb://127.0.0.1:27017/fakebnb";
 const ExpressError = require("./utils/ExpressError.js");
@@ -28,14 +27,13 @@ app.use(express.urlencoded({ extended: true }));
 app.use(methodOverride("_method"));
 app.use(express.static(path.join(__dirname, "/public")));
 
-// Session & flash
+// Session
 const sessionOptions = {
   secret: "secret",
   resave: false,
   saveUninitialized: false,
 };
 app.use(session(sessionOptions));
-app.use(flash());
 
 // Passport
 app.use(passport.initialize());
@@ -46,8 +44,6 @@ passport.deserializeUser(User.deserializeUser());
 
 // Locals middleware
 app.use((req, res, next) => {
-  res.locals.error = req.flash("error");
-  res.locals.success = req.flash("success");
   res.locals.currentUser = req.user;
   next();
 });
