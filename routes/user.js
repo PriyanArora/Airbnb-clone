@@ -1,7 +1,6 @@
 const express = require("express");
 const router = express.Router();
 const User = require("../models/user.js");
-const wrapAsync = require("../utils/wrapAsync.js");
 const passport = require("passport");
 
 // Signup routes
@@ -9,21 +8,18 @@ router.get("/signup", (req, res) => {
   res.render("users/signup.ejs");
 });
 
-router.post("/signup", wrapAsync(async (req, res, next) => {
+router.post("/signup", async (req, res, next) => {
   try {
     const { username, email, password } = req.body;
     const newUser = new User({ username, email });
-    const registeredUser = await User.register(newUser, password);
-    req.login(registeredUser, (err) => {
-      if (err) return next(err);
-      req.flash("success", "Welcome to WanderLust!");
-      res.redirect("/listings");
-    });
+    await User.register(newUser, password);
+    req.flash("success", "Account created! Please log in.");
+    req.session.save(() => res.redirect("/login"));
   } catch (e) {
     req.flash("error", e.message);
-    res.redirect("/signup");
+    req.session.save(() => res.redirect("/signup"));
   }
-}));
+});
 
 // Login routes
 router.get("/login", (req, res) => {
@@ -46,7 +42,7 @@ router.get("/logout", (req, res, next) => {
   req.logout((err) => {
     if (err) return next(err);
     req.flash("success", "You have been logged out.");
-    res.redirect("/listings");
+    res.redirect("/");
   });
 });
 
